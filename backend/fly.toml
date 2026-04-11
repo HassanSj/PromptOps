@@ -1,0 +1,22 @@
+# App name is set at deploy time in the Fly.io UI (must be globally unique).
+# If deploy fails on name, pick another (e.g. promptops-api-hassan).
+
+app = "promptops"
+
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
