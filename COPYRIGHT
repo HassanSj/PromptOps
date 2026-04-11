@@ -1,0 +1,17 @@
+PromptOps — copyright statement
+================================
+
+Copyright (c) 2026 Hassan Sajjad. All rights reserved.
+
+The PromptOps application source code, documentation, and branding are
+proprietary unless and until you apply a different license in writing.
+
+A private GitHub repository with the full source tree is the usual approach for
+non-public work. For sharing a minimal public footprint
+without publishing application source, run:
+
+  npm run distribution
+
+and publish only the generated `distribution/out/` contents (see
+docs/GITHUB_AND_COPYRIGHT.md).
+

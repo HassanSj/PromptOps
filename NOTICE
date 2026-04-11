@@ -1,0 +1,11 @@
+PromptOps
+Copyright (c) 2026 Hassan Sajjad
+
+This product includes software developed for PromptOps (chat-to-infrastructure).
+
+Third-party open-source components (when you build or run the application) are
+listed in package manifests (e.g. package.json, go.mod, requirements.txt) and
+remain under their respective licenses. Those components are not distributed in
+the optional "legal-only" archive produced by `npm run distribution` — that
+archive is for copyright metadata and high-level documentation only.
+
