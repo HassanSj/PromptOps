@@ -105,7 +105,7 @@ Open **http://localhost:3000**. Chat triggers generate + Redis job + WebSocket l
 
 ## API quick reference
 
-- **Frontend proxy:** `POST /api/generate` → FastAPI `/generate` (forwards `enqueue_execution`).
+- **`POST /api/generate`:** If `GROQ_API_KEY` or `GEMINI_API_KEY` is set in the Next.js environment, generation runs **in Node on Vercel** (no Python). Otherwise it **proxies** to FastAPI when `BACKEND_URL` is set (forwards `enqueue_execution`).
 - **Backend:** `GET /healthz`, `POST /generate`
 - **Engine:** `GET /healthz`, `POST /v1/jobs`, `GET /ws?job_id=…`
 - **Redis keys:** `promptops:jobs`, `promptops:log:{job_id}`, `promptops:drift:workspaces`, channel `promptops:drift:broadcast`
@@ -123,6 +123,15 @@ Open **http://localhost:3000**. Chat triggers generate + Redis job + WebSocket l
   and publish only the generated `distribution/out/` bundle (legal notices +
   short readme). Keep `LICENSE`, `NOTICE`, and `COPYRIGHT` accurate.
 - Details: **`docs/GITHUB_AND_COPYRIGHT.md`**.
+
+## Deploy on Vercel (single project)
+
+1. Import this repo in [Vercel](https://vercel.com). Choose **one Next.js app** (framework **Next.js**), **not** the **Services** / multi-service preset that tries to deploy `backend/` as FastAPI — generation runs in **`/api/generate`** on Node; you do **not** need a separate Python service on Vercel.
+2. **Root Directory:** `.` (repository root, where this `package.json` and `vercel.json` live). Leave build/output overrides **off** unless you know you need them.
+3. **Environment variables:** set **`GROQ_API_KEY`** (and optionally **`GROQ_MODEL`**, e.g. `llama-3.1-8b-instant`), or **`GEMINI_API_KEY`** + **`LLM_PROVIDER=gemini`** (+ optional **`GEMINI_MODEL`**). Leave **`BACKEND_URL` unset** so the API route uses the built-in LLM path. Remove placeholder keys like `EXAMPLE_NAME`.
+4. Do **not** commit secrets; add keys only in the Vercel dashboard.
+5. **Limits:** Vercel caps **function duration** by plan; Groq is usually fast enough. If calls time out, shorten prompts or raise the limit on a paid plan.
+6. **Ollama** does not work on Vercel (no localhost). Use Groq or Gemini in the cloud.
 
 ## Production notes (short)
 
