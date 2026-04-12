@@ -5,8 +5,8 @@ import { canUseInlineLlm, generateTerraformInline } from "@/lib/terraform-llm"
 
 export const runtime = "nodejs"
 
-/** Vercel caps this by plan (e.g. 60s Hobby, 300s Pro). Groq is usually faster. */
-export const maxDuration = 800
+/** Vercel Hobby: max 300s. Higher tiers may allow more via dashboard. */
+export const maxDuration = 300
 
 type GenerateRequest = {
   prompt: string

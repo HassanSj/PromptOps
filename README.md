@@ -130,7 +130,7 @@ Open **http://localhost:3000**. Chat triggers generate + Redis job + WebSocket l
 2. **Root Directory:** `.` (repository root, where this `package.json` and `vercel.json` live). Leave build/output overrides **off** unless you know you need them.
 3. **Environment variables:** set **`GROQ_API_KEY`** (and optionally **`GROQ_MODEL`**, e.g. `llama-3.1-8b-instant`), or **`GEMINI_API_KEY`** + **`LLM_PROVIDER=gemini`** (+ optional **`GEMINI_MODEL`**). Leave **`BACKEND_URL` unset** so the API route uses the built-in LLM path. Remove placeholder keys like `EXAMPLE_NAME`.
 4. Do **not** commit secrets; add keys only in the Vercel dashboard.
-5. **Limits:** Vercel caps **function duration** by plan; Groq is usually fast enough. If calls time out, shorten prompts or raise the limit on a paid plan.
+5. **Limits:** On **Hobby**, `/api/generate` uses **`maxDuration` 300s** (Vercel’s ceiling). Groq is usually fast enough; if you still hit timeouts, shorten prompts or upgrade the plan.
 6. **Ollama** does not work on Vercel (no localhost). Use Groq or Gemini in the cloud.
 
 **CLI note:** New `vercel` CLIs may try to add `experimentalServices` if they detect a Python app. This repo uses **`requirements-app.txt`** (not `requirements.txt`) and **`backend/docker/Dockerfile`** so the root app stays **Next.js only**. If `vercel.json` ever gains `experimentalServices`, delete that block, keep only `framework` + npm commands, then run `npx vercel@latest --yes --name promptops` (project name must be **lowercase**).
