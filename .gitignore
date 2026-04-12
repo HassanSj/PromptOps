@@ -82,3 +82,5 @@ Desktop.ini
 
 # Local distribution build output (legal + docs only; see scripts/create-distribution.mjs)
 /distribution/out/
+
+.vercel
