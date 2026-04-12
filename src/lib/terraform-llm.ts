@@ -11,6 +11,7 @@ export type TerraformAIResult = {
 const FENCE_RE = /^```(?:hcl|terraform|tf)?\s*|\s*```$/gim
 /** `[\s\S]` instead of `.` with `s` flag for older TS targets */
 const FENCED_BLOCK_RE = /```(?:hcl|terraform|tf)\s*\r?\n?([\s\S]*?)```/gi
+const JSON_FENCE_RE = /```(?:json)?\s*\r?\n?([\s\S]*?)```/gi
 const GENERIC_FENCE_RE = /```\w*\s*\r?\n?([\s\S]*?)```/gi
 
 function stripCodeFences(s: string): string {
@@ -53,19 +54,15 @@ function explanationFromPreamble(raw: string): string {
   return head.length > 1200 ? head.slice(0, 1200) + "…" : head
 }
 
-function fallbackFromText(raw: string): TerraformAIResult | null {
+/** Try ```json ... ``` or any fenced block that parses as our result object. */
+function parseFromJsonFences(raw: string): TerraformAIResult | null {
   const t = raw.trim()
-  if (!t) return null
-  const hcl = largestHclFence(t)
-  if (hcl) {
-    return { hcl_code: hcl, explanation: explanationFromPreamble(t) }
-  }
-  const start = t.indexOf("{")
-  const end = t.lastIndexOf("}")
-  if (start !== -1 && end > start) {
+  for (const m of t.matchAll(JSON_FENCE_RE)) {
+    const inner = m[1]?.trim()
+    if (!inner || !inner.startsWith("{")) continue
     try {
-      const obj = JSON.parse(t.slice(start, end + 1)) as Record<string, unknown>
-      if (obj && typeof obj.hcl_code === "string") {
+      const obj = JSON.parse(inner) as Record<string, unknown>
+      if (typeof obj.hcl_code === "string") {
         return {
           hcl_code: obj.hcl_code,
           explanation:
@@ -74,9 +71,22 @@ function fallbackFromText(raw: string): TerraformAIResult | null {
         }
       }
     } catch {
-      /* ignore */
+      /* try next fence */
     }
   }
+  return null
+}
+
+function fallbackFromText(raw: string): TerraformAIResult | null {
+  const t = raw.trim()
+  if (!t) return null
+  const fromJsonFence = parseFromJsonFences(t)
+  if (fromJsonFence) return fromJsonFence
+  const hcl = largestHclFence(t)
+  if (hcl) {
+    return { hcl_code: hcl, explanation: explanationFromPreamble(t) }
+  }
+  // Do not use first-{ to last-}: HCL inside JSON strings contains `}` and breaks parsing.
   return null
 }
 
@@ -90,9 +100,9 @@ function buildMessages(userPrompt: string): { system: string; user: string } {
     "Convert the user's request into Terraform configuration.",
     "",
     "Hard rules:",
-    "- Output MUST be valid JSON that matches the provided schema.",
-    "- Reply with that JSON object only — no preamble, no ``` fences around the whole answer.",
-    "- The field `hcl_code` MUST contain only Terraform HCL, no Markdown fences.",
+    "- Output MUST be a single valid JSON object (UTF-8) matching the schema. No markdown, no code fences, no text before or after the JSON.",
+    "- Escape newlines and double-quotes inside JSON strings per JSON rules so the output is machine-parseable.",
+    "- The field `hcl_code` MUST contain Terraform HCL as one JSON string (use \\n for newlines inside the string).",
     "- Use Terraform best practices: least privilege, secure defaults, and clear naming.",
     "- Prefer widely-used official providers.",
     "- If the user omits critical info (region, names), choose safe defaults and mention them in `explanation`.",
@@ -104,14 +114,18 @@ function buildMessages(userPrompt: string): { system: string; user: string } {
 
 function parseModelJson(text: string): TerraformAIResult {
   const trimmed = text.trim()
+  const tryObj = (obj: Record<string, unknown>): TerraformAIResult | null => {
+    if (typeof obj.hcl_code !== "string") return null
+    const exp =
+      typeof obj.explanation === "string" && obj.explanation.trim()
+        ? obj.explanation.trim()
+        : "Generated Terraform."
+    return { hcl_code: stripCodeFences(obj.hcl_code), explanation: exp }
+  }
   try {
     const obj = JSON.parse(trimmed) as Record<string, unknown>
-    if (typeof obj.hcl_code === "string" && typeof obj.explanation === "string") {
-      return {
-        hcl_code: stripCodeFences(obj.hcl_code),
-        explanation: obj.explanation.trim() || "Generated Terraform.",
-      }
-    }
+    const ok = tryObj(obj)
+    if (ok) return ok
   } catch {
     /* fall through */
   }
@@ -150,22 +164,37 @@ async function callGroq(userPrompt: string): Promise<string> {
   const model =
     (process.env.GROQ_MODEL ?? "llama-3.1-8b-instant").trim() || "llama-3.1-8b-instant"
   const { system, user } = buildMessages(userPrompt)
-  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const bodyJson = (useJsonObject: boolean) =>
+    JSON.stringify({
+      model,
+      temperature: 0.1,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      ...(useJsonObject ? { response_format: { type: "json_object" as const } } : {}),
+    })
+
+  let res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
+    body: bodyJson(true),
   })
-  const raw = await res.text()
+  let raw = await res.text()
+  if (!res.ok && res.status === 400 && /json_object|response_format/i.test(raw)) {
+    res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: bodyJson(false),
+    })
+    raw = await res.text()
+  }
   if (!res.ok) {
     throw new Error(`Groq API error ${res.status}: ${raw.slice(0, 2000)}`)
   }
@@ -196,7 +225,10 @@ async function callGemini(userPrompt: string): Promise<string> {
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: user }] }],
-      generationConfig: { temperature: 0.2 },
+      generationConfig: {
+        temperature: 0.1,
+        responseMimeType: "application/json",
+      },
     }),
   })
   const raw = await res.text()
