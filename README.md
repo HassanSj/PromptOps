@@ -89,7 +89,7 @@ go run ./cmd/server
 cd backend
 python -m venv .venv
 .venv\Scripts\activate   # Windows
-pip install -r requirements.txt
+pip install -r requirements-app.txt
 # set GEMINI_API_KEY (and REDIS_URL if needed)
 uvicorn app.main:app --reload --port 8000
 ```
@@ -132,6 +132,8 @@ Open **http://localhost:3000**. Chat triggers generate + Redis job + WebSocket l
 4. Do **not** commit secrets; add keys only in the Vercel dashboard.
 5. **Limits:** Vercel caps **function duration** by plan; Groq is usually fast enough. If calls time out, shorten prompts or raise the limit on a paid plan.
 6. **Ollama** does not work on Vercel (no localhost). Use Groq or Gemini in the cloud.
+
+**CLI note:** New `vercel` CLIs may try to add `experimentalServices` if they detect a Python app. This repo uses **`requirements-app.txt`** (not `requirements.txt`) and **`backend/docker/Dockerfile`** so the root app stays **Next.js only**. If `vercel.json` ever gains `experimentalServices`, delete that block, keep only `framework` + npm commands, then run `npx vercel@latest --yes --name promptops` (project name must be **lowercase**).
 
 ## Production notes (short)
 

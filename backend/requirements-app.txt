@@ -7,4 +7,3 @@ langchain-google-genai
 langchain-groq
 langchain-ollama
 redis
-

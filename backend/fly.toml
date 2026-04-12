@@ -6,7 +6,7 @@ app = "promptops"
 primary_region = "iad"
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = "docker/Dockerfile"
 
 [http_service]
   internal_port = 8080

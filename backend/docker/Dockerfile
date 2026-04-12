@@ -5,8 +5,9 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Build context must be the `backend/` directory (see backend/README.md / fly.toml).
+COPY requirements-app.txt .
+RUN pip install --no-cache-dir -r requirements-app.txt
 
 COPY app ./app
 

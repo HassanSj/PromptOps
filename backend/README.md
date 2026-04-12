@@ -7,7 +7,7 @@
 2) Install deps:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements-app.txt
 ```
 
 3) Set env vars (LLM — pick one):
