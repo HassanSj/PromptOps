@@ -268,7 +268,7 @@ export function PromptOpsDashboard() {
           <div className="flex flex-col">
             <div className="text-lg font-semibold">PromptOps</div>
             <div className="text-sm text-muted-foreground">
-              Chat-to-Infrastructure (Phases 1–5)
+              Chat-to-Infrastructure
             </div>
           </div>
         </header>
